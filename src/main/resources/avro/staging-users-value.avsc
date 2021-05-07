@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "UserEvent",
+  "namespace": "de.kreuzwerker.blogs.kafkaconsumertesting.users.events",
+  "fields": [
+    {
+      "name": "id",
+      "type": {
+        "type": "string",
+        "avro.java.string": "String"
+      },
+      "logicalType": "UUID"
+    },
+    {
+      "name": "firstName",
+      "type": [
+        {
+          "type": "string",
+          "avro.java.string": "String"
+        },
+        "null"
+      ]
+    },
+    {
+      "name": "lastName",
+      "type": [
+        {
+          "type": "string",
+          "avro.java.string": "String"
+        },
+        "null"
+      ]
+    }
+  ]
+}

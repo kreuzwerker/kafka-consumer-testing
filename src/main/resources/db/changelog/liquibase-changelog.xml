@@ -1,0 +1,35 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
+
+    <changeSet author="anja.gruss" id="createSequence_pk">
+        <createSequence cacheSize="50"
+                        sequenceName="pk_seq"
+                        startValue="1"
+                        incrementBy="10"/>
+    </changeSet>
+
+
+    <changeSet id="init" author="anja.gruss">
+        <createTable tableName="user">
+            <column name="pk" type="BIGINT">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="user_id" type="varchar">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_name" type="varchar" />
+            <column name="first_name" type="TEXT"/>
+            <column name="last_name" type="TEXT"/>
+        </createTable>
+
+        <createIndex tableName="user" unique="true" indexName="idx_user_id">
+            <column name="user_id"/>
+        </createIndex>
+
+    </changeSet>
+
+
+
+</databaseChangeLog>
