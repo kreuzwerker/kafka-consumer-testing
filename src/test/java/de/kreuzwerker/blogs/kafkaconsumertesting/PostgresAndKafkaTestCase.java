@@ -1,6 +1,5 @@
 package de.kreuzwerker.blogs.kafkaconsumertesting;
 
-import de.kreuzwerker.blogs.kafkaconsumertesting.messaging.MockAvroSerializer;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -75,7 +74,6 @@ public class PostgresAndKafkaTestCase {
                     "spring.liquibase.default-schema=public",
                     "spring.liquibase.liquibase-schema=public",
                     "spring.kafka.bootstrap-servers=" + kafkaContainer.getBootstrapServers(),
-                    "spring.kafka.properties.schema.registry.url=mock://testUrl",
                     "spring.kafka.client-id=kafkatest",
                     "spring.kafka.consumer.group-id=kafkatest",
                     "spring.kafka.consumer.auto-offset-reset=earliest",
@@ -90,7 +88,8 @@ public class PostgresAndKafkaTestCase {
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 0);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MockAvroSerializer.class);
+        //props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MockAvroSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, io.confluent.kafka.serializers.KafkaAvroSerializer.class);
         props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://testUrl");
         props.put(ProducerConfig.CLIENT_ID_CONFIG, "kafkatest");
         return new KafkaProducer<>(props);
@@ -101,7 +100,8 @@ public class PostgresAndKafkaTestCase {
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
         props.put(
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                de.kreuzwerker.blogs.kafkaconsumertesting.messaging.MockAvroDeserializer.class);
+                //de.kreuzwerker.blogs.kafkaconsumertesting.messaging.MockAvroDeserializer.class
+                io.confluent.kafka.serializers.KafkaAvroDeserializer.class);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://testUrl");
         props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true");
