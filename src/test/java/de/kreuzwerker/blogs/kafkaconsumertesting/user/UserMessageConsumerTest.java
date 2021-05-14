@@ -2,7 +2,6 @@ package de.kreuzwerker.blogs.kafkaconsumertesting.user;
 
 import de.kreuzwerker.blogs.kafkaconsumertesting.PostgresAndKafkaTestCase;
 import de.kreuzwerker.blogs.kafkaconsumertesting.users.events.UserEvent;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -28,31 +27,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @SpringBootTest
-@Slf4j
 class UserMessageConsumerTest extends PostgresAndKafkaTestCase {
 
   @Autowired UserMessageConsumer testConsumer;
   @Autowired UserService userService;
   @Autowired UserRepository userRepository;
 
+  private static final String DEFAULT_FIRST_NAME = "Laura";
+  private static final String DEFAULT_LAST_NAME = "Craft";
+
   private static final String EVENT_TYPE_KEY = "eventType";
-  private static final String EVENT_CREATE = "UPDATE";
+  private static final String EVENT_UPDATE = "UPDATE";
   private static final String EVENT_DELETE = "DELETE";
   private static final String TOPIC = "staging-users";
 
-  private UserEntity testEntity;
+  private UserEntity existingUser;
+  private final String existingUserId = UUID.randomUUID().toString();
 
   KafkaConsumer consumer;
   KafkaProducer<Object, Object> producer;
 
   @Test
-  void testCreateUser() throws ExecutionException, InterruptedException {
+  void testEventCreatingUserInRepo() throws ExecutionException, InterruptedException {
     assumeTrue(kafkaContainer.isRunning());
-    String userId = UUID.randomUUID().toString();
+    String newUserId = UUID.randomUUID().toString();
     UserEvent event =
-        UserEvent.newBuilder().setId(userId).setFirstName("Jane").setLastName("Doe").build();
+        UserEvent.newBuilder().setId(newUserId).setFirstName("Jane").setLastName("Doe").build();
 
-    List<Header> headers = singletonList(new RecordHeader(EVENT_TYPE_KEY, EVENT_CREATE.getBytes()));
+    List<Header> headers = singletonList(new RecordHeader(EVENT_TYPE_KEY, EVENT_UPDATE.getBytes()));
     ProducerRecord record = new ProducerRecord<>(TOPIC, null, event.getId(), event, headers);
 
     sendEvent(producer, record);
@@ -61,10 +63,65 @@ class UserMessageConsumerTest extends PostgresAndKafkaTestCase {
         KafkaTestUtils.getSingleRecord(consumer, TOPIC);
 
     testConsumer.consume(singleRecord);
-    Optional<UserEntity> userEntityByUserId = userRepository.findUserEntityByUserId(userId);
-    assertThat(userEntityByUserId).isPresent();
-    assertThat(userEntityByUserId.get().getFirstName()).isEqualTo("Jane");
-    assertThat(userEntityByUserId.get().getLastName()).isEqualTo("Doe");
+    Optional<UserEntity> result = userRepository.findUserEntityByUserId(newUserId);
+    assertThat(result).isPresent();
+    assertThat(result.get().getFirstName()).isEqualTo("Jane");
+    assertThat(result.get().getLastName()).isEqualTo("Doe");
+  }
+
+  @Test
+  void testEventUpdatingExistingUser() throws ExecutionException, InterruptedException {
+    assumeTrue(kafkaContainer.isRunning());
+    assumeTrue(userRepository.findUserEntityByUserId(existingUserId).isPresent());
+
+    UserEvent event =
+        UserEvent.newBuilder()
+            .setId(existingUserId)
+            .setFirstName("Change")
+            .setLastName("Happened")
+            .build();
+
+    List<Header> headers = singletonList(new RecordHeader(EVENT_TYPE_KEY, EVENT_UPDATE.getBytes()));
+    ProducerRecord record = new ProducerRecord<>(TOPIC, null, event.getId(), event, headers);
+
+    sendEvent(producer, record);
+
+    ConsumerRecord<String, UserEvent> singleRecord =
+        KafkaTestUtils.getSingleRecord(consumer, TOPIC);
+
+    testConsumer.consume(singleRecord);
+    Optional<UserEntity> result = userRepository.findUserEntityByUserId(existingUserId);
+    assertThat(result.get().getFirstName()).isEqualTo("Change");
+    assertThat(result.get().getLastName()).isEqualTo("Happened");
+  }
+
+  @Test
+  void testEventDeletingUser() throws ExecutionException, InterruptedException {
+    assumeTrue(kafkaContainer.isRunning());
+    assumeTrue(userRepository.findUserEntityByUserId(existingUserId).isPresent());
+
+    UserEvent event =
+        UserEvent.newBuilder().setId(existingUserId).setFirstName(null).setLastName(null).build();
+
+    List<Header> headers = singletonList(new RecordHeader(EVENT_TYPE_KEY, EVENT_DELETE.getBytes()));
+    ProducerRecord record = new ProducerRecord<>(TOPIC, null, event.getId(), event, headers);
+
+    sendEvent(producer, record);
+
+    ConsumerRecord<String, UserEvent> singleRecord =
+        KafkaTestUtils.getSingleRecord(consumer, TOPIC);
+
+    testConsumer.consume(singleRecord);
+    Optional<UserEntity> result = userRepository.findUserEntityByUserId(existingUserId);
+    assertThat(result).isEmpty();
+  }
+
+  private void createTestDataInRepository() {
+    existingUser = new UserEntity();
+    existingUser.setUserId(existingUserId);
+    existingUser.setFirstName(DEFAULT_FIRST_NAME);
+    existingUser.setLastName(DEFAULT_LAST_NAME);
+    userRepository.save(existingUser);
   }
 
   @BeforeEach
@@ -74,6 +131,7 @@ class UserMessageConsumerTest extends PostgresAndKafkaTestCase {
     Duration duration = Duration.ofSeconds(5);
     consumer.poll(duration);
     producer = createProducer();
+    createTestDataInRepository();
   }
 
   @AfterEach
