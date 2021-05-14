@@ -14,29 +14,36 @@ import java.util.Optional;
 @Slf4j
 public class UserMessageConsumer {
 
-    @Autowired
-    private UserService userService;
+  @Autowired private UserService userService;
 
-    @KafkaListener(topics="staging-users", clientIdPrefix = "kafkatest")
-    public void consume(ConsumerRecord<String, UserEvent> record) {
-        UserEvent event = record.value();
-        Optional<String> typeOpt = getEventTypeFromHeader(record.headers());
-        if (typeOpt.isEmpty()) {
-            // ignore
-        } else {
-            log.info(
-                "UserMessageConsumer >> consume >> received event id {} with {}", event.getId(), typeOpt.get());
-            userService.updateDb(event);
-        }
+  @KafkaListener(topics = "staging-users", clientIdPrefix = "kafkatest")
+  public void consume(ConsumerRecord<String, UserEvent> record) {
+    UserEvent event = record.value();
+    Optional<String> typeOpt = getEventTypeFromHeader(record.headers());
+    if (typeOpt.isEmpty()) {
+      // ignore
+    } else if (typeOpt.get().equals("UPDATE")) {
+      log.info(
+          "UserMessageConsumer >> consume >> received update event id {} with {}",
+          event.getId(),
+          typeOpt.get());
+      userService.updateDb(event);
+    } else if (typeOpt.get().equals("DELETE")) {
+      log.info(
+          "UserMessageConsumer >> consume >> received delete event id {} with {}",
+          event.getId(),
+          typeOpt.get());
+      userService.deleteUser(event);
     }
+  }
 
-    private Optional<String> getEventTypeFromHeader(Headers headers) {
-        Iterable<Header> itHeader = headers.headers("eventType");
-        Iterator<Header> iterator = itHeader.iterator();
-        if (iterator.hasNext()) {
-            Header next = iterator.next();
-            return Optional.of(new String(next.value()));
-        }
-        return Optional.empty();
+  private Optional<String> getEventTypeFromHeader(Headers headers) {
+    Iterable<Header> itHeader = headers.headers("eventType");
+    Iterator<Header> iterator = itHeader.iterator();
+    if (iterator.hasNext()) {
+      Header next = iterator.next();
+      return Optional.of(new String(next.value()));
     }
+    return Optional.empty();
+  }
 }
