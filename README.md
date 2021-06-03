@@ -10,4 +10,4 @@ When you check the internet for testing in the context of Spring Boot Kafka cons
 
 In this case, we decided against the use of the EmbeddedKafka and against the full Testcontainers setup and went for a setup with a smaller number of Testcontainers.
 
-More details can be found in the blogpost: 
+More details can be found in this blogpost: https://kreuzwerker.de/post/testing-a-kafka-consumer-with-avro-schema-messages-in-your-spring-boot
